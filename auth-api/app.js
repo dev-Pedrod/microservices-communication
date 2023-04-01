@@ -15,7 +15,6 @@ app.use(express.json())
 app.use("/api", userRouter);
 
 app.get('/api/status', (req, res) => {
-    UserService.findByEmail(req)
     return res.json({
         service: 'auth-api',
         status: 'up',

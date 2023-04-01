@@ -15,8 +15,11 @@ export function validateRequestData(email) {
 }
 
 export async function validatePassword(password, hashPassword) {
-    if (!bcrypt.compare(password, hashPassword)) {
-        throw new UserException(httpStatus.UNAUTHORIZED, "Password doesn't match.");
+    if (!(await bcrypt.compare(password, hashPassword))) {
+        throw new UserException(
+            httpStatus.UNAUTHORIZED,
+            "Password doesn't match."
+        );
     }
 }
 
