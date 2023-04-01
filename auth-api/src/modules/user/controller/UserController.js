@@ -8,7 +8,7 @@ class UserController {
 
     async findByEmail(req, res) {
         let user = await UserService.findByEmail(req);
-        return res.json(user);
+        return res.status(user.status).json(user.content? user.content : user);
     }
 }
 

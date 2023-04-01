@@ -25,6 +25,15 @@ export async function validatePassword(password, hashPassword) {
 
 export function validateUserNotFound(user) {
     if (!user) {
-        throw new UserException(httpStatus.BAD_REQUEST, "User was not found.");
+        throw new UserException(httpStatus.NOT_FOUND, "User was not found.");
+    }
+}
+
+export function validateAuthenticatedUser(user, authUser) {
+    if (!authUser || user.id !== authUser.id) {
+        throw new UserException(
+            httpStatus.FORBIDDEN,
+            "You cannot see this user data."
+        );
     }
 }

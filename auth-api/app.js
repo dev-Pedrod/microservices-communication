@@ -12,8 +12,7 @@ db.createInitialData().then(() => {
 });
 
 app.use(express.json())
-app.use("/api", userRouter);
-app.use(checkToken)
+
 app.get('/api/status', (req, res) => {
     return res.json({
         service: 'auth-api',
@@ -21,6 +20,8 @@ app.get('/api/status', (req, res) => {
         httpStatus: 200
     })
 })
+
+app.use("/api", userRouter);
 
 app.listen(PORT, () => {
     console.info(`Server started successfully at port: ${PORT}`);
