@@ -1,7 +1,7 @@
 import express from "express"
 import * as db from "./src/config/db/initial-data.js"
 import userRouter from "./src/modules/user/routes/UserRoutes.js";
-import UserService from "./src/modules/user/service/UserService.js";
+import checkToken from "./src/config/auth/check-token.js";
 
 const app = express();
 const env = process.env;
@@ -12,16 +12,16 @@ db.createInitialData().then(() => {
 });
 
 app.use(express.json())
-app.use("/api", userRouter);
 
 app.get('/api/status', (req, res) => {
-    UserService.findByEmail(req)
     return res.json({
         service: 'auth-api',
         status: 'up',
         httpStatus: 200
     })
 })
+
+app.use("/api", userRouter);
 
 app.listen(PORT, () => {
     console.info(`Server started successfully at port: ${PORT}`);
