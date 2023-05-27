@@ -7,14 +7,14 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
-public interface IGenericSerice<T extends BaseEntity, DTO extends BaseDTO> {
-    T findById(Long id);
-    T findById(Long id, boolean includeDisabled);
+public interface IGenericSerice<T extends BaseEntity, DTO extends BaseDTO, ID> {
+    T findById(ID id, boolean includeDisabled);
+    T findById(ID id);
     Page<DTO> findAll(Pageable pageable);
     List<T> findAll();
-    T getReference(Long id);
-    T create(DTO dto);
-    T update(DTO dto);
-    void delete(Long id);
+    T getReference(ID id);
+    T create(T dto);
+    T update(T dto);
+    void delete(ID id);
     T saveAndFlush(T entity);
 }
