@@ -6,7 +6,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.Where;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -20,15 +19,14 @@ import static java.time.LocalDateTime.now;
 @MappedSuperclass
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@Where(clause = "disable_at is null")
 public abstract class BaseEntity implements Serializable {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @SequenceGenerator(name = "sq_seq", allocationSize = 1)
     private Long id;
     @Column(updatable = false)
     private LocalDateTime createdAt;
     private LocalDateTime disabledAt;
-    private Long lastModificationBy;
     private LocalDateTime updatedAt;
 
     @PrePersist
