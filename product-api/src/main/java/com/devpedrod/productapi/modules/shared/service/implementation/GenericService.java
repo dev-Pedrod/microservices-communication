@@ -5,6 +5,7 @@ import com.devpedrod.productapi.modules.shared.entity.BaseEntity;
 import com.devpedrod.productapi.modules.shared.exceptions.ObjectNotFoundException;
 import com.devpedrod.productapi.modules.shared.repository.IGenericRepository;
 import com.devpedrod.productapi.modules.shared.service.IGenericSerice;
+import com.devpedrod.productapi.modules.shared.utils.SupportUtils;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -21,11 +22,13 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.function.Supplier;
 
 @Slf4j
 @Service
 public abstract class GenericService<T extends BaseEntity, DTO extends BaseDTO, ID, REPOSITORY extends IGenericRepository<T, ID>> implements IGenericSerice<T, DTO, ID> {
 
+    private static final String NOT_FOUND_BY_ID = "Entity type: %s not found with id: %s";
     @Getter(AccessLevel.PROTECTED)
     private final REPOSITORY repository;
     private final Repositories repositories;
@@ -39,14 +42,14 @@ public abstract class GenericService<T extends BaseEntity, DTO extends BaseDTO, 
     @Override
     public T findById(ID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new ObjectNotFoundException(String.format("Entity type: %s not found with id: %s", getDomainClass().getName(), id)));
+                .orElseThrow(() -> new ObjectNotFoundException(String.format(NOT_FOUND_BY_ID, getDomainClass().getName(), id)));
     }
 
     @Override
     @Transactional(readOnly = true)
     public T findById(ID id, boolean includeDisabled) {
         if (includeDisabled) return repository.findByIdIncludeDisabled(id)
-                .orElseThrow(() -> new ObjectNotFoundException(String.format("Entity type: %s not found with id: %s", getDomainClass().getName(), id)));
+                .orElseThrow(() -> new ObjectNotFoundException(String.format(NOT_FOUND_BY_ID, getDomainClass().getName(), id)));
         return this.findById(id);
     }
 
@@ -75,6 +78,11 @@ public abstract class GenericService<T extends BaseEntity, DTO extends BaseDTO, 
     }
 
     @Override
+    public T create(Supplier<T> supplier) {
+        return this.create(supplier.get());
+    }
+
+    @Override
     @Transactional()
     public T update(T entity) {
         entity.setUpdatedAt(LocalDateTime.now());
@@ -84,11 +92,24 @@ public abstract class GenericService<T extends BaseEntity, DTO extends BaseDTO, 
 
     @Override
     @Transactional()
+    public T update(Supplier<T> supplier) {
+        return this.update(supplier.get());
+    }
+
+    @Override
+    @Transactional()
     public void delete(ID id) {
         T entity = this.getReference(id);
         entity.setDisabledAt(LocalDateTime.now());
         this.saveAndFlush(entity);
         log.info("entity disabled. id: {} type: {}", id, domainClass.getName());
+    }
+
+    @Override
+    @Transactional()
+    public void delete(ID id, SupportUtils.NoReturnExpression method) {
+        method.run();
+        this.delete(id);
     }
 
     @Override
