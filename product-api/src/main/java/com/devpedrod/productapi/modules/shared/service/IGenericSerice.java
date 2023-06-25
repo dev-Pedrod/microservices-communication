@@ -13,7 +13,7 @@ public interface IGenericSerice<T extends BaseEntity, DTO extends BaseDTO, ID> {
     T findById(ID id, boolean includeDisabled);
     T findById(ID id);
     Page<DTO> findAll(Pageable pageable);
-    List<T> findAll();
+    List<DTO> findAll();
     T getReference(ID id);
     T create(T entity);
     T create(Supplier<T> supplier);

@@ -18,19 +18,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 public abstract class GenericService<T extends BaseEntity, DTO extends BaseDTO, ID, REPOSITORY extends IGenericRepository<T, ID>> implements IGenericSerice<T, DTO, ID> {
 
+    private static final String OF = "of";
+    private static final String UNCHECKED = "unchecked";
     private static final String NOT_FOUND_BY_ID = "Entity type: %s not found with id: %s";
+
     @Getter(AccessLevel.PROTECTED)
-    private final REPOSITORY repository;
+    protected final REPOSITORY repository;
     private final Repositories repositories;
     @Getter(AccessLevel.PROTECTED)
     private final Class<T> domainClass;
@@ -61,8 +66,18 @@ public abstract class GenericService<T extends BaseEntity, DTO extends BaseDTO, 
 
     @Override
     @Transactional(readOnly = true)
-    public List<T> findAll() {
-        return repository.findAll();
+    @SuppressWarnings(UNCHECKED)
+    public List<DTO> findAll() {
+        return repository.findAll()
+                .stream()
+                .map(entity -> {
+                    try {
+                        return (DTO) getDTOClass().getMethod(OF, getDomainClass()).invoke(getDTOClass(), entity);
+                    } catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+                        log.error(e.getMessage(), e);
+                        throw new RuntimeException(e);
+                    }
+                }).collect(Collectors.toList());
     }
 
     @Override
@@ -130,7 +145,7 @@ public abstract class GenericService<T extends BaseEntity, DTO extends BaseDTO, 
         throw new RuntimeException();
     }
 
-    @SuppressWarnings(value = "unchecked")
+    @SuppressWarnings(UNCHECKED)
     private Class<DTO> buildDTOClass(Class<?> clazz) {
         Type genericSuperclass = clazz.getGenericSuperclass();
         if (genericSuperclass instanceof ParameterizedType) {
@@ -141,7 +156,7 @@ public abstract class GenericService<T extends BaseEntity, DTO extends BaseDTO, 
         throw new RuntimeException();
     }
 
-    @SuppressWarnings(value = "unchecked")
+    @SuppressWarnings(UNCHECKED)
     private REPOSITORY buildRepository() {
         return (REPOSITORY) repositories.getRepositoryFor(this.getDomainClass())
                 .orElseThrow(() -> new IllegalStateException("Can't find repository for entity of type " + this.getDomainClass()));

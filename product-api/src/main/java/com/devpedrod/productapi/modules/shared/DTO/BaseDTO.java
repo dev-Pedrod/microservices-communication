@@ -1,6 +1,5 @@
 package com.devpedrod.productapi.modules.shared.DTO;
 
-import com.devpedrod.productapi.modules.shared.entity.BaseEntity;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
