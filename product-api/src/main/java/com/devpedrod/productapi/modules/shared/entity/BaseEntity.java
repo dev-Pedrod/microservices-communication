@@ -35,11 +35,4 @@ public abstract class BaseEntity implements Serializable {
             this.createdAt = now();
         }
     }
-
-    @PreUpdate
-    public void preUpdate() {
-        if (!Objects.isNull(this.createdAt)) {
-            this.updatedAt = now();
-        }
-    }
 }
