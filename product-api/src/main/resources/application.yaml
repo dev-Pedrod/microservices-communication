@@ -1,6 +1,10 @@
 server:
   port: ${PORT:8081}
 
+app-config:
+  secrets:
+    api-secret: ${API_SECRET:U2VjcmV0U29RdWVFbUJhc2U2NEtLS0sK}
+
 spring:
   main:
     allow-bean-definition-overriding: true
