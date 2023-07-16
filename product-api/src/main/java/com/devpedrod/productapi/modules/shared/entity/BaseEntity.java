@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -13,8 +14,8 @@ import java.util.Objects;
 
 import static java.time.LocalDateTime.now;
 
-@Getter
-@Setter
+@SuperBuilder
+@Getter @Setter
 @NoArgsConstructor
 @MappedSuperclass
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -30,9 +31,20 @@ public abstract class BaseEntity implements Serializable {
     private LocalDateTime updatedAt;
 
     @PrePersist
-    public void prePersist() {
-        if (Objects.isNull(this.id)) {
+    private void prePersist() {
+        if (idAndCreatedDateIsNull()) {
             this.createdAt = now();
         }
+    }
+
+    @PreUpdate
+    private void preUpdate() {
+        if (!idAndCreatedDateIsNull()) {
+            this.updatedAt = now();
+        }
+    }
+
+    private Boolean idAndCreatedDateIsNull(){
+        return Objects.isNull(this.id) && Objects.isNull(this.createdAt);
     }
 }
