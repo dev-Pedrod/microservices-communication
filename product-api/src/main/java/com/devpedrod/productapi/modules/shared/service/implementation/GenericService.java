@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static org.springframework.transaction.annotation.Propagation.REQUIRED;
+
 @Slf4j
 @Service
 public abstract class GenericService<T extends BaseEntity, DTO extends BaseDTO, ID, REPOSITORY extends IGenericRepository<T, ID>> implements IGenericSerice<T, DTO, ID> {
@@ -36,7 +38,6 @@ public abstract class GenericService<T extends BaseEntity, DTO extends BaseDTO, 
 
     @Getter(AccessLevel.PROTECTED)
     protected final REPOSITORY repository;
-    private final Repositories repositories;
     @Getter(AccessLevel.PROTECTED)
     private final Class<T> domainClass;
     @Getter(AccessLevel.PROTECTED)
@@ -44,7 +45,16 @@ public abstract class GenericService<T extends BaseEntity, DTO extends BaseDTO, 
     @Getter(AccessLevel.PROTECTED)
     private final ModelMapper mapper;
 
+    @Autowired
+    protected GenericService(WebApplicationContext applicationContext, ModelMapper mapper) {
+        this.mapper = mapper;
+        this.domainClass = buildDomainClass(getClass());
+        this.DTOClass = buildDTOClass(getClass());
+        this.repository = buildRepository(new Repositories(applicationContext));
+    }
+
     @Override
+    @Transactional(readOnly = true)
     public T findById(ID id) {
         return repository.findById(id)
                 .orElseThrow(() -> new ObjectNotFoundException(String.format(NOT_FOUND_BY_ID, getDomainClass().getName(), id)));
@@ -87,20 +97,20 @@ public abstract class GenericService<T extends BaseEntity, DTO extends BaseDTO, 
 
     @Override
     @Transactional()
-    public T create(T entity) {
+    public T save(T entity) {
         log.info("new entity created. type: {}", getDomainClass().getName());
         return repository.save(entity);
     }
 
     @Override
-    public T create(Supplier<T> supplier) {
-        return this.create(supplier.get());
+    @Transactional()
+    public T save(Supplier<T> supplier) {
+        return this.save(supplier.get());
     }
 
     @Override
     @Transactional()
     public T update(T entity) {
-        entity.setUpdatedAt(LocalDateTime.now());
         log.info("entity updated. id: {} type: {}", entity.getId(), getDomainClass().getName());
         return repository.save(entity);
     }
@@ -125,6 +135,13 @@ public abstract class GenericService<T extends BaseEntity, DTO extends BaseDTO, 
     public void delete(ID id, SupportUtils.NoReturnExpression method) {
         method.run();
         this.delete(id);
+    }
+
+    @Override
+    @Transactional(propagation = REQUIRED)
+    public void reactivateEntity(ID id) {
+        this.getReference(id);
+        repository.reactivateEntity((Long) id);
     }
 
     @Override
@@ -157,17 +174,8 @@ public abstract class GenericService<T extends BaseEntity, DTO extends BaseDTO, 
     }
 
     @SuppressWarnings(UNCHECKED)
-    private REPOSITORY buildRepository() {
+    private REPOSITORY buildRepository(Repositories repositories) {
         return (REPOSITORY) repositories.getRepositoryFor(this.getDomainClass())
                 .orElseThrow(() -> new IllegalStateException("Can't find repository for entity of type " + this.getDomainClass()));
-    }
-
-    @Autowired
-    protected GenericService(WebApplicationContext applicationContext, ModelMapper mapper) {
-        this.mapper = mapper;
-        this.domainClass = buildDomainClass(getClass());
-        this.DTOClass = buildDTOClass(getClass());
-        this.repositories = new Repositories(applicationContext);
-        this.repository = buildRepository();
     }
 }
