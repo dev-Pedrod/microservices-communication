@@ -5,5 +5,5 @@ import com.devpedrod.productapi.modules.shared.repository.IGenericRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface CategoryRepository extends IGenericRepository<Category, Long> {
+public interface ICategoryRepository extends IGenericRepository<Category, Long> {
 }

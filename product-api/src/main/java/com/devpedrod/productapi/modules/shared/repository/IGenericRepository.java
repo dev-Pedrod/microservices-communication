@@ -20,6 +20,6 @@ public interface IGenericRepository<T extends BaseEntity, ID> extends JpaReposit
 
     @Modifying
     @Transactional(propagation = REQUIRED)
-    @Query("update #{#entityName} entity set entity.disabledAt = null where entity.id = ?1")
+    @Query(value = "update #{#entityName} set disabled_at = null where id = ?1", nativeQuery = true)
     void reactivateEntity(Long id);
 }

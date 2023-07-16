@@ -31,6 +31,7 @@ public class ProductResponse extends BaseDTO {
                 .name(product.getName())
                 .quantityAvailable(product.getQuantityAvailable())
                 .createdAt(product.getCreatedAt())
+                .updatedAt(product.getUpdatedAt())
                 .supplier(SupplierResponse.of(product.getSupplier()))
                 .category(CategoryResponse.of(product.getCategory()))
                 .build();
