@@ -117,11 +117,13 @@ public class ProductService extends GenericService<Product, ProductResponse, Lon
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Boolean existsByCategoryId(Long categoryId) {
         return repository.existsByCategoryId(categoryId);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Boolean existsBySupplierId(Long supplierId) {
         return repository.existsBySupplierId(supplierId);
     }
@@ -141,7 +143,8 @@ public class ProductService extends GenericService<Product, ProductResponse, Lon
                 });
     }
 
-    private void validateStock(ProductQuantityDTO productQuantity) {
+    @Transactional(readOnly = true)
+    void validateStock(ProductQuantityDTO productQuantity) {
         if (isEmpty(productQuantity.getProductId()) || isEmpty(productQuantity.getQuantity())) {
             throw new ValidationException("Product ID and quantity must be informed.");
         }
