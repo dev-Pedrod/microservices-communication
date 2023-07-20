@@ -21,7 +21,7 @@ spring:
   jpa:
     show_sql: true
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: none
     properties:
       testWhileIdle: true
       validationQuery: SELECT 1
