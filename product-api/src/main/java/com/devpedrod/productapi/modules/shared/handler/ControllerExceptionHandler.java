@@ -51,7 +51,7 @@ public class ControllerExceptionHandler {
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ExceptionResponse> authenticationException(AuthenticationException e, HttpServletRequest request) {
-        return ResponseEntity.status(NOT_FOUND).body(ExceptionResponse.builder()
+        return ResponseEntity.status(UNAUTHORIZED).body(ExceptionResponse.builder()
                 .timeStamp(now())
                 .status(UNAUTHORIZED)
                 .statusCode(UNAUTHORIZED.value())
