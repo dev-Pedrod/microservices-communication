@@ -4,13 +4,11 @@ import com.devpedrod.productapi.modules.jwt.DTO.JwtResponse;
 import com.devpedrod.productapi.modules.shared.exceptions.AuthenticationException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ObjectUtils;
 
-import static org.springframework.util.ObjectUtils.*;
+import static org.springframework.util.ObjectUtils.isEmpty;
 
 @Service
 public class JwtService {
@@ -22,7 +20,7 @@ public class JwtService {
     private String apiSecret;
 
     public void validateAuthorization(String token) {
-        var accessToken = extractToken(token);
+        String accessToken = extractToken(token);
         try {
             Claims claims = Jwts
                     .parserBuilder()
@@ -30,7 +28,7 @@ public class JwtService {
                     .build()
                     .parseClaimsJws(accessToken)
                     .getBody();
-            var user = JwtResponse.getUser(claims);
+            JwtResponse user = JwtResponse.getUser(claims);
             if (isEmpty(user) || isEmpty(user.getId())) {
                 throw new AuthenticationException("The user is not valid.");
             }
