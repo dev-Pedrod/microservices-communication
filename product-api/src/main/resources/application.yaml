@@ -3,12 +3,12 @@ server:
 
 app-config:
   secrets:
-    api-secret: ${API_SECRET:U2VjcmV0U29RdWVFbUJhc2U2NEtLS0sK}
+    api-secret: ${API_SECRET:YXV0aC1hcGktc2VjcmV0LWNvbnRhaW5lci0xMjM0NTY=}
   rabbit:
     exchange:
       product: product.topic
 
-    routingKey:
+    routing-key:
       product-stock: product-stock-update.routingKey
       sales-confirmation: sales-confirmation.routingKey
 
