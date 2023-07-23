@@ -1,16 +1,21 @@
 package com.devpedrod.productapi.modules.product.service.implementation;
 
-import com.devpedrod.productapi.modules.category.service.ICategoryService;
+import com.devpedrod.productapi.config.HTTP.RequestUtil;
 import com.devpedrod.productapi.modules.product.DTO.*;
 import com.devpedrod.productapi.modules.product.model.Product;
 import com.devpedrod.productapi.modules.product.repository.IProductRepository;
 import com.devpedrod.productapi.modules.product.service.IProductService;
 import com.devpedrod.productapi.modules.sales.DTO.SalesConfirmationDTO;
+import com.devpedrod.productapi.modules.sales.DTO.SalesProductResponse;
+import com.devpedrod.productapi.modules.sales.client.SalesClient;
 import com.devpedrod.productapi.modules.sales.enums.SalesStatus;
+import com.devpedrod.productapi.modules.sales.rabbit.SalesConfirmationSender;
+import com.devpedrod.productapi.modules.shared.DTO.SuccessResponse;
 import com.devpedrod.productapi.modules.shared.exceptions.ValidationException;
 import com.devpedrod.productapi.modules.shared.service.implementation.GenericService;
 import com.devpedrod.productapi.modules.shared.strategy.product.ProductStrategy;
-import com.devpedrod.productapi.modules.supplier.service.ISupplierService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,18 +33,26 @@ import static org.springframework.util.ObjectUtils.isEmpty;
 @Service
 public class ProductService extends GenericService<Product, ProductResponse, Long, IProductRepository> implements IProductService {
 
-    private ProductStrategy productStrategy;
-    private ICategoryService categoryService;
-    private ISupplierService supplierService;
+    private static final Integer ZERO = 0;
+    private static final String AUTHORIZATION = "Authorization";
+    private static final String TRANSACTION_ID = "transactionid";
+    private static final String SERVICE_ID = "serviceid";
+
+
+    private final ProductStrategy productStrategy;
+    private final SalesConfirmationSender salesConfirmationSender;
+    private final SalesClient salesClient;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     protected ProductService(WebApplicationContext applicationContext, ModelMapper mapper,
-                             ProductStrategy productStrategy, ISupplierService supplierService,
-                             ICategoryService categoryService) {
+                             ProductStrategy productStrategy, SalesConfirmationSender salesConfirmationSender,
+                             SalesClient salesClient, ObjectMapper objectMapper) {
         super(applicationContext, mapper);
         this.productStrategy = productStrategy;
-        this.supplierService = supplierService;
-        this.categoryService = categoryService;
+        this.salesConfirmationSender = salesConfirmationSender;
+        this.salesClient = salesClient;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -67,6 +80,17 @@ public class ProductService extends GenericService<Product, ProductResponse, Lon
     }
 
     @Override
+    @Transactional
+    public void delete(Long id) {
+        super.delete(id, () -> {
+            SalesProductResponse sales = getSalesByProductId(id);
+            if (!isEmpty(sales.getSalesIds())) {
+                throw new ValidationException("The product cannot be deleted. There are sales for it.");
+            }
+        });
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> findBySupplierId(Long supplierId) {
         if (isEmpty(supplierId)) throw new ValidationException("The product' supplier id must be informed.");
@@ -90,9 +114,9 @@ public class ProductService extends GenericService<Product, ProductResponse, Lon
     @Transactional(readOnly = true)
     public ProductSalesResponse findProductSales(Long id) {
         if (isEmpty(id)) throw new ValidationException("The product id must be informed.");
-        var product = super.findById(id);
-        var sales = new ArrayList<String>();
-        return ProductSalesResponse.of(product, sales);
+        Product product = super.findById(id);
+        var sales = getSalesByProductId(product.getId());
+        return ProductSalesResponse.of(product, sales.getSalesIds());
     }
 
     @Override
@@ -111,8 +135,7 @@ public class ProductService extends GenericService<Product, ProductResponse, Lon
         } catch (Exception ex) {
             log.error("Error while trying to update stock for message with error: {}", ex.getMessage(), ex);
             var rejectedMessage = new SalesConfirmationDTO(product.getSalesId(), SalesStatus.REJECTED, product.getTransactionid());
-            // TODO: SEND CONFIRMATION MESSAGE TO SALES API
-            // salesConfirmationSender.sendSalesConfirmationMessage(rejectedMessage);
+            salesConfirmationSender.sendSalesConfirmationMessage(rejectedMessage);
         }
     }
 
@@ -143,6 +166,30 @@ public class ProductService extends GenericService<Product, ProductResponse, Lon
                 });
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public SuccessResponse checkProductsStock(ProductCheckStockRequest request) {
+        try {
+            HttpServletRequest currentRequest = RequestUtil.getCurrentRequest();
+            String transactionid = currentRequest.getHeader(TRANSACTION_ID);
+            var serviceid = currentRequest.getAttribute(SERVICE_ID);
+            log.info("Request to POST product stock with data {} | [transactionID: {} | serviceID: {}]",
+                    objectMapper.writeValueAsString(request), transactionid, serviceid);
+
+            if (isEmpty(request) || isEmpty(request.getProducts())) {
+                throw new ValidationException("The request data and products must be informed.");
+            }
+
+            request.getProducts().forEach(this::validateStock);
+            SuccessResponse response = SuccessResponse.create("The stock is ok!");
+            log.info("Response to POST product stock with data {} | [transactionID: {} | serviceID: {}]",
+                    objectMapper.writeValueAsString(response), transactionid, serviceid);
+            return response;
+        } catch (Exception ex) {
+            throw new ValidationException(ex.getMessage());
+        }
+    }
+
     @Transactional(readOnly = true)
     void validateStock(ProductQuantityDTO productQuantity) {
         if (isEmpty(productQuantity.getProductId()) || isEmpty(productQuantity.getQuantity())) {
@@ -155,27 +202,45 @@ public class ProductService extends GenericService<Product, ProductResponse, Lon
     }
 
     @Transactional
-    void updateStock(ProductStockDTO product) {
-        List<Product> productsForUpdate = new ArrayList<>();
+    public void updateStock(ProductStockDTO product) {
+        var productsForUpdate = new ArrayList<Product>();
         product.getProducts()
                 .forEach(salesProduct -> {
-                    Product existingProduct = findById(salesProduct.getProductId());
+                    var existingProduct = findById(salesProduct.getProductId());
                     validateQuantityInStock(salesProduct, existingProduct);
                     existingProduct.updateStock(salesProduct.getQuantity());
                     productsForUpdate.add(existingProduct);
                 });
-
         if (!isEmpty(productsForUpdate)) {
             repository.saveAll(productsForUpdate);
             var approvedMessage = new SalesConfirmationDTO(product.getSalesId(), SalesStatus.APPROVED, product.getTransactionid());
-            // TODO: SEND CONFIRMATION MESSAGE TO SALES API
-            // salesConfirmationSender.sendSalesConfirmationMessage(approvedMessage);
+            salesConfirmationSender.sendSalesConfirmationMessage(approvedMessage);
         }
     }
 
     private void validateQuantityInStock(ProductQuantityDTO salesProduct, Product existingProduct) {
         if (salesProduct.getQuantity() > existingProduct.getQuantityAvailable()) {
             throw new ValidationException(String.format("The product %s is out of stock.", existingProduct.getId()));
+        }
+    }
+
+    private SalesProductResponse getSalesByProductId(Long productId) {
+        try {
+            HttpServletRequest currentRequest = RequestUtil.getCurrentRequest();
+            String token = currentRequest.getHeader(AUTHORIZATION);
+            String transactionid = currentRequest.getHeader(TRANSACTION_ID);
+            var serviceid = currentRequest.getAttribute(SERVICE_ID);
+
+            log.info("Sending GET request to orders by productId with data {} | [transactionID: {} | serviceID: {}]", productId, transactionid, serviceid);
+            SalesProductResponse response = salesClient.findSalesByProductId(productId, token, transactionid)
+                    .orElseThrow(() -> new ValidationException("The sales was not found by this product."));
+            log.info("Recieving response from orders by productId with data {} | [transactionID: {} | serviceID: {}]",
+                    objectMapper.writeValueAsString(response), transactionid, serviceid);
+
+            return response;
+        } catch (Exception ex) {
+            log.error("Error trying to call Sales-API: {}", ex.getMessage());
+            throw new ValidationException("The sales could not be found.");
         }
     }
 }
