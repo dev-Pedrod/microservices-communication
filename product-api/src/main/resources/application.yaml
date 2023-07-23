@@ -1,6 +1,21 @@
 server:
   port: ${PORT:8081}
 
+app-config:
+  secrets:
+    api-secret: ${API_SECRET:YXV0aC1hcGktc2VjcmV0LWNvbnRhaW5lci0xMjM0NTY=}
+  rabbit:
+    exchange:
+      product: product.topic
+
+    routing-key:
+      product-stock: product-stock-update.routingKey
+      sales-confirmation: sales-confirmation.routingKey
+
+    queue:
+      product-stock: product-stock-update.queue
+      sales-confirmation: sales-confirmation.queue
+
 spring:
   main:
     allow-bean-definition-overriding: true
@@ -17,7 +32,7 @@ spring:
   jpa:
     show_sql: true
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: none
     properties:
       testWhileIdle: true
       validationQuery: SELECT 1
@@ -32,3 +47,10 @@ spring:
       mode: always
       continue-on-error: true
       platform: postgresql
+
+  rabbitmq:
+    host: ${RABBIT_MQ_HOST:localhost}
+    port: ${RABBIT_MQ_PORT:5672}
+    username: ${RABBIT_MQ_USER:guest}
+    password: ${RABBIT_MQ_PASSWORD:guest}
+    virtual-host: ${RABBIT_MQ_VHOST:}

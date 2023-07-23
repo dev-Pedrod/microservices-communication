@@ -112,4 +112,6 @@ temp/
 # IDE
 .idea
 
+yarn.lock
+
 # End of https://www.gitignore.io/api/node

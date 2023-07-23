@@ -1,8 +1,11 @@
 import {Sequelize} from "sequelize";
 
-const sequelize = new Sequelize("auth-db", "admin", "123456", {
-    host: 'localhost',
-    dialect: 'postgres',
+import {DB_HOST, DB_NAME, DB_PASSWORD, DB_PORT, DB_USER,} from "../constants/secrets.js";
+
+const sequelize = new Sequelize(DB_NAME, DB_USER, DB_PASSWORD, {
+    host: DB_HOST,
+    port: DB_PORT,
+    dialect: "postgres",
     quoteIdentifiers: false,
     define: {
         syncOnAssociation: true,
@@ -10,14 +13,20 @@ const sequelize = new Sequelize("auth-db", "admin", "123456", {
         underscored: true,
         underscoredAll: true,
         freezeTableName: true,
-    }
+    },
+    pool: {
+        acquire: 180000,
+    },
 });
 
-sequelize.authenticate().then(() => {
-    console.info("Connection has ben stablished!")
-}).catch((err) => {
-    console.error("Unable connect to the database.")
-    console.error(err.message)
-});
+sequelize
+    .authenticate()
+    .then(() => {
+        console.info("Connection has been established!");
+    })
+    .catch((err) => {
+        console.error("Unable to connect to the database.");
+        console.error(err.message);
+    });
 
 export default sequelize;

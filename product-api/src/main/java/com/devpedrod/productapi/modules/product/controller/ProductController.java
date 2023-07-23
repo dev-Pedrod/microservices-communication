@@ -1,8 +1,11 @@
 package com.devpedrod.productapi.modules.product.controller;
 
+import com.devpedrod.productapi.modules.product.DTO.ProductCheckStockRequest;
 import com.devpedrod.productapi.modules.product.DTO.ProductRequest;
 import com.devpedrod.productapi.modules.product.DTO.ProductResponse;
+import com.devpedrod.productapi.modules.product.DTO.ProductSalesResponse;
 import com.devpedrod.productapi.modules.product.service.IProductService;
+import com.devpedrod.productapi.modules.shared.DTO.SuccessResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -38,7 +41,7 @@ public class ProductController {
     }
 
     @PatchMapping("reactivate/{id}")
-    public ResponseEntity<Void> reactive(@PathVariable("id") Long id){
+    public ResponseEntity<Void> reactive(@PathVariable("id") Long id) {
         productService.reactivateEntity(id);
         return ResponseEntity.noContent().build();
     }
@@ -72,5 +75,16 @@ public class ProductController {
     @GetMapping("supplier/{supplierId}")
     public ResponseEntity<List<ProductResponse>> findBySupplierId(@PathVariable Long supplierId) {
         return ResponseEntity.ok(productService.findBySupplierId(supplierId));
+    }
+
+    @PostMapping("check-stock")
+    public ResponseEntity<SuccessResponse> checkProductsStock(@RequestBody ProductCheckStockRequest request) {
+        return ResponseEntity.ok(productService.checkProductsStock(request));
+    }
+
+
+    @GetMapping("{id}/sales")
+    public ResponseEntity<ProductSalesResponse> findProductSales(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.findProductSales(id));
     }
 }
