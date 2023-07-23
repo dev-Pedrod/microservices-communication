@@ -16,10 +16,10 @@ public class RabbitConfig {
     @Value("${app-config.rabbit.exchange.product}")
     private String productTopicExchange;
 
-    @Value("${app-config.rabbit.routingKey.product-stock}")
+    @Value("${app-config.rabbit.routing-key.product-stock}")
     private String productStockKey;
 
-    @Value("${app-config.rabbit.routingKey.sales-confirmation}")
+    @Value("${app-config.rabbit.routing-key.sales-confirmation}")
     private String salesConfirmationKey;
 
     @Value("${app-config.rabbit.queue.product-stock}")
